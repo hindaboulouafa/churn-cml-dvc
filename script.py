@@ -1,70 +1,69 @@
+# script.py
 import pandas as pd
 import numpy as np
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler, OneHotEncoder
 from sklearn.compose import ColumnTransformer
-from sklearn.pipeline import Pipeline
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.metrics import classification_report, confusion_matrix
-from imblearn.over_sampling import SMOTE
+from sklearn.metrics import confusion_matrix, accuracy_score, precision_score, recall_score, f1_score
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-# 1. Charger dataset
+# 1. Load dataset
 data = pd.read_csv("dataset.csv")
 
-# Suppression colonnes inutiles si besoin
-# data = data.drop(columns=["id"])  # exemple
+# 2. Define features and target
+X = data.drop("Exited", axis=1)
+y = data["Exited"]
 
-# Séparer features / target
-X = data.drop("churn", axis=1)
-y = data["churn"]
+# 3. Identify categorical and numerical columns
+categorical_cols = ['Geography', 'Gender']
+numerical_cols = [col for col in X.columns if col not in categorical_cols]
 
-# Identifier colonnes numériques et catégorielles
-num_features = X.select_dtypes(include=[np.number]).columns.tolist()
-cat_features = X.select_dtypes(exclude=[np.number]).columns.tolist()
+# 4. Preprocessing
+preprocessor = ColumnTransformer(
+    transformers=[
+        ('num', StandardScaler(), numerical_cols),
+        ('cat', OneHotEncoder(drop='first'), categorical_cols)
+    ]
+)
 
-# 2. Préprocessing
-numeric_transformer = Pipeline(steps=[("scaler", StandardScaler())])
-categorical_transformer = Pipeline(steps=[("encoder", OneHotEncoder(handle_unknown='ignore'))])
+X_processed = preprocessor.fit_transform(X)
 
-preprocessor = ColumnTransformer(transformers=[
-    ("num", numeric_transformer, num_features),
-    ("cat", categorical_transformer, cat_features)
-])
+# 5. Train/test split
+X_train, X_test, y_train, y_test = train_test_split(X_processed, y, test_size=0.2, random_state=42, stratify=y)
 
-# 3. Split train/test
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+# 6. Train model
+clf = RandomForestClassifier(n_estimators=100, random_state=42)
+clf.fit(X_train, y_train)
 
-# 4. Gestion déséquilibre classes
-smote = SMOTE(random_state=42)
-X_train_res, y_train_res = smote.fit_resample(X_train, y_train)
+# 7. Predictions
+y_pred = clf.predict(X_test)
+y_train_pred = clf.predict(X_train)
 
-# 5. Modèle
-clf = Pipeline(steps=[("preprocessor", preprocessor),
-                      ("classifier", RandomForestClassifier(random_state=42))])
+# 8. Metrics
+metrics = {
+    "Train Accuracy": accuracy_score(y_train, y_train_pred),
+    "Train Precision": precision_score(y_train, y_train_pred),
+    "Train Recall": recall_score(y_train, y_train_pred),
+    "Train F1": f1_score(y_train, y_train_pred),
+    "Test Accuracy": accuracy_score(y_test, y_pred),
+    "Test Precision": precision_score(y_test, y_pred),
+    "Test Recall": recall_score(y_test, y_pred),
+    "Test F1": f1_score(y_test, y_pred)
+}
 
-clf.fit(X_train_res, y_train_res)
-
-# 6. Prédictions
-y_pred_train = clf.predict(X_train)
-y_pred_test = clf.predict(X_test)
-
-# 7. Metrics
-report_train = classification_report(y_train, y_pred_train)
-report_test = classification_report(y_test, y_pred_test)
-
+# 9. Save metrics
 with open("metrics.txt", "w") as f:
-    f.write("=== TRAIN METRICS ===\n")
-    f.write(report_train)
-    f.write("\n=== TEST METRICS ===\n")
-    f.write(report_test)
+    for k, v in metrics.items():
+        f.write(f"{k}: {v:.4f}\n")
 
-# 8. Matrice de confusion (test)
-cm = confusion_matrix(y_test, y_pred_test)
+# 10. Confusion matrix
+cm = confusion_matrix(y_test, y_pred)
 plt.figure(figsize=(6,4))
-sns.heatmap(cm, annot=True, fmt="d", cmap="Blues")
-plt.title("Confusion Matrix - Test")
+sns.heatmap(cm, annot=True, fmt='d', cmap='Blues')
 plt.xlabel("Predicted")
 plt.ylabel("Actual")
+plt.title("Confusion Matrix")
 plt.savefig("conf_matrix.png")
+plt.close()

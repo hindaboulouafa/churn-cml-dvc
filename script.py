@@ -16,6 +16,7 @@ data = pd.read_csv("dataset.csv")
 X = data.drop("Exited", axis=1)
 y = data["Exited"]
 
+<<<<<<< HEAD
 # 3. Identify categorical and numerical columns
 categorical_cols = ['Geography', 'Gender']
 numerical_cols = [col for col in X.columns if col not in categorical_cols]
@@ -42,6 +43,38 @@ y_pred = clf.predict(X_test)
 y_train_pred = clf.predict(X_train)
 
 # 8. Metrics
+=======
+# 3. Drop non-predictive identifiers
+X = X.drop(['RowNumber', 'CustomerId', 'Surname'], axis=1)
+
+# 4. Identify categorical and numerical columns
+categorical_cols = ['Geography', 'Gender']
+numerical_cols = [col for col in X.columns if col not in categorical_cols]
+
+# 5. Preprocessing
+preprocessor = ColumnTransformer(
+    transformers=[
+        ('num', StandardScaler(), numerical_cols),
+        ('cat', OneHotEncoder(drop='first'), categorical_cols)
+    ]
+)
+X_processed = preprocessor.fit_transform(X)
+
+# 6. Train/test split
+X_train, X_test, y_train, y_test = train_test_split(
+    X_processed, y, test_size=0.2, random_state=42, stratify=y
+)
+
+# 7. Train model
+clf = RandomForestClassifier(n_estimators=100, random_state=42)
+clf.fit(X_train, y_train)
+
+# 8. Predictions
+y_train_pred = clf.predict(X_train)
+y_pred = clf.predict(X_test)
+
+# 9. Metrics calculation
+>>>>>>> 4633841 (Fixed script.py for identifiers and categorical columns)
 metrics = {
     "Train Accuracy": accuracy_score(y_train, y_train_pred),
     "Train Precision": precision_score(y_train, y_train_pred),
@@ -53,12 +86,20 @@ metrics = {
     "Test F1": f1_score(y_test, y_pred)
 }
 
+<<<<<<< HEAD
 # 9. Save metrics
+=======
+# 10. Save metrics
+>>>>>>> 4633841 (Fixed script.py for identifiers and categorical columns)
 with open("metrics.txt", "w") as f:
     for k, v in metrics.items():
         f.write(f"{k}: {v:.4f}\n")
 
+<<<<<<< HEAD
 # 10. Confusion matrix
+=======
+# 11. Confusion matrix
+>>>>>>> 4633841 (Fixed script.py for identifiers and categorical columns)
 cm = confusion_matrix(y_test, y_pred)
 plt.figure(figsize=(6,4))
 sns.heatmap(cm, annot=True, fmt='d', cmap='Blues')
